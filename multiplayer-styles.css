@@ -873,36 +873,12 @@
 @media (max-width: 768px) {
     #webcam-container {
         grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(3, 1fr);
-        gap: 8px;
-        top: 15%;
-        left: 15%;
-        width: 70%;
-        height: 70%;
-    }
-    
-    .webcam-player-name {
-        font-size: 0.8em;
-    }
-    
-    .webcam-toggle {
-        width: 28px;
-        height: 28px;
-        font-size: 12px;
-    }
-    
-    .webcam-status {
-        font-size: 0.7em;
-    }
-}
-
-@media (max-width: 480px) {
-    #webcam-container {
-        top: 20%;
-        left: 20%;
-        width: 60%;
-        height: 60%;
+        grid-template-rows: repeat(2, 1fr);
         gap: 6px;
+        top: 12%;
+        left: 10%;
+        width: 80%;
+        height: 75%;
     }
     
     .webcam-player-name {
@@ -912,12 +888,36 @@
     .webcam-toggle {
         width: 24px;
         height: 24px;
+        font-size: 11px;
+    }
+    
+    .webcam-status {
+        font-size: 0.65em;
+    }
+}
+
+@media (max-width: 480px) {
+    #webcam-container {
+        top: 14%;
+        left: 10%;
+        width: 80%;
+        height: 72%;
+        gap: 4px;
+    }
+    
+    .webcam-player-name {
+        font-size: 0.62em;
+    }
+    
+    .webcam-toggle {
+        width: 22px;
+        height: 22px;
         font-size: 10px;
     }
     
     #toggle-all-webcams {
-        padding: 6px 8px;
-        font-size: 0.8em;
+        padding: 4px 7px;
+        font-size: 0.7em;
     }
 }
 
@@ -1254,4 +1254,190 @@
     .seguidores-titulo, .logros-titulo {
         font-size: 20px;
     }
-} 
+}
+
+/* =========================================================
+   PANEL MULTIPLAYER INTEGRADO EN COLUMNA DERECHA (NO TAPA TABLERO)
+   ========================================================= */
+#multiplayer-sidebar-panel {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.multiplayer-integrated-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    color: #f8fafc;
+    border: 2px solid #22c55e;
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.mp-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    font-size: 11px;
+}
+
+.mp-room-badge strong {
+    color: #4ade80;
+    letter-spacing: 0.5px;
+}
+
+.mp-players-count {
+    background: rgba(255,255,255,0.12);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.mp-players-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 76px;
+    overflow-y: auto;
+}
+
+.mp-player-chip {
+    font-size: 11px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mp-player-chip.mp-chip-self {
+    background: rgba(34, 197, 94, 0.25);
+    border-left: 2px solid #4ade80;
+    font-weight: bold;
+}
+
+.mp-media-controls {
+    display: flex;
+    gap: 4px;
+    justify-content: space-between;
+    padding-top: 2px;
+}
+
+.mp-btn {
+    flex: 1;
+    border: none;
+    color: white;
+    padding: 4px 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10.5px;
+    font-weight: bold;
+    transition: opacity 0.2s, transform 0.1s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.mp-btn:hover {
+    opacity: 0.92;
+}
+
+.mp-btn-success { background: #16a34a; }
+.mp-btn-danger  { background: #dc2626; }
+.mp-btn-warn    { background: #ea580c; }
+.mp-btn-muted   { background: #475569; }
+.mp-btn-info    { background: #2563eb; }
+
+/* =========================================================
+   AVISO DE GIRAR MÓVIL A HORIZONTAL (SOLO MÓVIL EN VERTICAL)
+   ========================================================= */
+.rotate-device-banner {
+    display: none;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+    .rotate-device-banner {
+        display: block;
+        position: sticky;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 2500;
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+        color: #111827;
+        padding: 6px 10px;
+        box-sizing: border-box;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .rotate-banner-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .rotate-icon {
+        font-size: 1.3em;
+        flex-shrink: 0;
+    }
+
+    .rotate-text {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.78em;
+        line-height: 1.2;
+        flex: 1;
+    }
+
+    .rotate-close-btn {
+        background: rgba(0,0,0,0.2);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        font-size: 0.8em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .mp-players-chips {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 960px) and (orientation: landscape), (max-height: 550px) and (orientation: landscape) {
+    .multiplayer-integrated-card {
+        padding: 4px 5px;
+        font-size: 10px;
+        gap: 3px;
+    }
+    .mp-card-header {
+        font-size: 9.5px;
+        padding-bottom: 2px;
+    }
+    .mp-player-chip {
+        font-size: 9.5px;
+        padding: 1px 4px;
+    }
+    .mp-btn {
+        font-size: 9.5px;
+        padding: 3px 2px;
+    }
+}

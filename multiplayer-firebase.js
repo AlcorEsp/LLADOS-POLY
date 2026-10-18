@@ -1096,6 +1096,8 @@ window.startMultiplayerGame = async function() {
 
 // Mostrar pantalla multiplayer inicial
 function showMultiplayerScreen() {
+    const header = document.querySelector('.game-header');
+    if (header) header.style.display = 'block';
     document.getElementById('multiplayer-screen').style.display = 'block';
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('game-container').style.display = 'none';
@@ -1105,6 +1107,8 @@ function showMultiplayerScreen() {
 function showLobby() {
     console.log('🏠 Mostrando lobby para sala:', currentRoomCode);
     
+    const header = document.querySelector('.game-header');
+    if (header) header.style.display = 'block';
     document.getElementById('multiplayer-screen').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'block';
     document.getElementById('game-container').style.display = 'none';
@@ -1132,6 +1136,8 @@ function showLobby() {
 function showGameScreen() {
     console.log('🎮 Mostrando pantalla de juego...');
     
+    const header = document.querySelector('.game-header');
+    if (header) header.style.display = 'none';
     document.getElementById('multiplayer-screen').style.display = 'none';
     document.getElementById('lobby-screen').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
@@ -1147,12 +1153,11 @@ function showGameScreen() {
     }, 500);
 }
 
-// Agregar información de multiplayer al juego
+// Agregar información de multiplayer al juego (integrado en columna derecha sin tapar el tablero)
 function addMultiplayerGameInfo() {
-    // Buscar donde agregar la info de jugadores
-    let targetElement = document.querySelector('.game-info') || 
-                       document.querySelector('#game-info') || 
-                       document.querySelector('.player-info') ||
+    // Buscar el contenedor integrado en la columna derecha
+    let targetElement = document.getElementById('multiplayer-sidebar-panel') ||
+                       document.querySelector('.col-der') ||
                        document.getElementById('game-container');
     
     if (!targetElement) {
@@ -1160,85 +1165,66 @@ function addMultiplayerGameInfo() {
         return;
     }
     
-    // Crear panel de info multiplayer
+    // Crear panel de info multiplayer integrado (sin position: fixed)
     let multiplayerInfo = document.getElementById('multiplayer-game-info');
     if (!multiplayerInfo) {
         multiplayerInfo = document.createElement('div');
         multiplayerInfo.id = 'multiplayer-game-info';
-        multiplayerInfo.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            z-index: 1000;
-            min-width: 200px;
-            border: 2px solid #4CAF50;
-        `;
+        multiplayerInfo.className = 'multiplayer-integrated-card';
         
-        targetElement.appendChild(multiplayerInfo);
+        if (targetElement.id === 'multiplayer-sidebar-panel') {
+            targetElement.appendChild(multiplayerInfo);
+        } else {
+            targetElement.insertBefore(multiplayerInfo, targetElement.firstChild);
+        }
     }
     
-    // Actualizar contenido con jugadores conectados
-    const playerCount = Object.keys(playersOnline).length;
+    // Actualizar contenido con jugadores conectados de forma compacta
+    const sortedIds = getSortedPlayerIds();
+    const playerCount = sortedIds.length;
     let html = `
-        <div style="text-align: center; margin-bottom: 10px;">
-            <strong>🎮 MULTIPLAYER ACTIVO</strong><br>
-            <small>Sala: ${currentRoomCode}</small>
+        <div class="mp-card-header">
+            <span class="mp-room-badge">🟢 Sala: <strong>${currentRoomCode || '---'}</strong></span>
+            <span class="mp-players-count">👥 ${playerCount}/4</span>
         </div>
-        <div style="border-top: 1px solid #666; padding-top: 10px;">
-            <strong>👥 Jugadores (${playerCount}):</strong><br>
+        <div class="mp-players-chips">
     `;
     
-    Object.keys(playersOnline).forEach((playerId, index) => {
+    sortedIds.forEach((playerId) => {
         const player = playersOnline[playerId];
+        if (!player) return;
         const isCurrentPlayer = playerId === currentPlayerId;
         const status = player.connected ? '🟢' : '🔴';
         const avatar = player.avatar || '👤';
         const badge = isCurrentPlayer ? ' (TÚ)' : '';
         
         html += `
-            <div style="margin: 5px 0; ${isCurrentPlayer ? 'background: rgba(76,175,80,0.3); padding: 3px; border-radius: 3px;' : ''}">
-                ${status} ${avatar} ${player.name}${badge}
-            </div>
+            <span class="mp-player-chip ${isCurrentPlayer ? 'mp-chip-self' : ''}" title="${player.name}">
+                ${status}${avatar} ${player.name}${badge}
+            </span>
         `;
     });
     
     html += `
         </div>
-        <div style="border-top: 1px solid #666; padding-top: 10px; margin-top: 10px;">
-            <div style="text-align: center; margin-bottom: 10px;">
-                <strong>🎤 Audio:</strong><br>
-                ${voiceChatConnected ? 
-                    `<button onclick="leaveVoiceChat()" style="background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin: 2px;">🔇 Desconectar Audio</button>
-                     ${voiceChatMuted ? 
-                        `<button onclick="toggleMute()" style="background: #ff9800; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin: 2px;">🔊 Activar Mic</button>` :
-                        `<button onclick="toggleMute()" style="background: #607d8b; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin: 2px;">🔇 Silenciar</button>`
-                     }` :
-                    `<button onclick="joinVoiceChat()" style="background: #4CAF50; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin: 2px;">🎤 Conectar Audio</button>`
-                }
-            </div>
-            <div style="text-align: center; margin-bottom: 10px;">
-                <strong>📹 Video:</strong><br>
-                ${videoChatConnected ? 
-                    `<button onclick="leaveVideoChat()" style="background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin: 2px;">📹 Apagar Cámara</button>` :
-                    `<button onclick="joinVideoChat()" style="background: #2196F3; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin: 2px;">📹 Encender Cámara</button>`
-                }
-            </div>
-            <div style="text-align: center;">
-                <button onclick="leaveRoom()" style="background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px;">
-                    🚪 Salir de Sala
-                </button>
-            </div>
+        <div class="mp-media-controls">
+            ${voiceChatConnected ? 
+                `<button onclick="leaveVoiceChat()" class="mp-btn mp-btn-danger" title="Desconectar Audio">🔇 Off Voz</button>
+                 ${voiceChatMuted ? 
+                    `<button onclick="toggleMute()" class="mp-btn mp-btn-warn" title="Activar Micrófono">🔊 Mic</button>` :
+                    `<button onclick="toggleMute()" class="mp-btn mp-btn-muted" title="Silenciar Micrófono">🔇 Mute</button>`
+                 }` :
+                `<button onclick="joinVoiceChat()" class="mp-btn mp-btn-success" title="Conectar Audio P2P">🎤 Audio</button>`
+            }
+            ${videoChatConnected ? 
+                `<button onclick="leaveVideoChat()" class="mp-btn mp-btn-danger" title="Apagar Cámara">📹 Off Cam</button>` :
+                `<button onclick="joinVideoChat()" class="mp-btn mp-btn-info" title="Encender Cámara P2P">📹 Cámara</button>`
+            }
         </div>
     `;
     
     multiplayerInfo.innerHTML = html;
-    console.log('✅ Panel de info multiplayer agregado');
+    console.log('✅ Panel de info multiplayer actualizado');
 }
 
 // Inicializar el juego real de MonoLLADOS para multiplayer

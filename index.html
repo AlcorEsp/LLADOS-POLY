@@ -109,10 +109,22 @@
     <!-- Contenedor oculto para streams de audio remotos WebRTC -->
     <div id="remote-audios" style="display: none;"></div>
 
+    <!-- Aviso para girar el móvil a horizontal (solo visible en móvil vertical) -->
+    <div id="rotate-device-banner" class="rotate-device-banner">
+        <div class="rotate-banner-content">
+            <span class="rotate-icon">📱🔄</span>
+            <div class="rotate-text">
+                <strong>¡Gira el móvil en horizontal!</strong>
+                <span>Para ver el tablero completo y jugar cómodamente</span>
+            </div>
+            <button class="rotate-close-btn" onclick="document.getElementById('rotate-device-banner').style.display='none'">✕</button>
+        </div>
+    </div>
+
     <!-- Pantalla de juego -->
     <div id="game-container" style="display: none;">
-        <!-- Indicador de conexión multiplayer -->
-        <div class="multiplayer-status" style="position: fixed; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.8em;">
+        <!-- Indicador oculto para mantener compatibilidad con referencias JS -->
+        <div class="multiplayer-status" style="display: none;">
             <span id="connection-indicator">🟢 Online</span>
             <span id="room-info">Sala: <span id="current-room-code"></span></span>
             <span id="turn-indicator"></span>
@@ -346,11 +358,14 @@
                 </div>
             </div>
             <div class="col-der">
+                <!-- Panel integrado de Sala Online (no flotante, no tapa el tablero) -->
+                <div id="multiplayer-sidebar-panel"></div>
+
                 <div id="player-stats"></div>
                 <div id="game-log"></div>
                 
-                <!-- CHAT DE VOZ -->
-                <div id="voice-chat-container">
+                <!-- CHAT DE VOZ (Oculto porque está integrado en el panel superior de Sala) -->
+                <div id="voice-chat-container" style="display: none;">
                     <div id="voice-chat-header">
                         <h3>🎤 Chat de Voz</h3>
                         <div id="voice-status">Desconectado</div>
