@@ -935,7 +935,7 @@ h2 {
     }
 }
 
-/* MÓVIL EN VERTICAL (PORTRAIT) - Layout apilado limpio y jugable + banner de rotación */
+/* MÓVIL EN VERTICAL (PORTRAIT) - Optimizado como vista principal de móvil sin scroll innecesario */
 @media (max-width: 900px) and (orientation: portrait) {
     #game-container {
         height: auto;
@@ -943,7 +943,7 @@ h2 {
         overflow-y: auto;
         overflow-x: hidden;
         justify-content: flex-start;
-        padding-bottom: 16px;
+        padding: 4px 0 12px 0;
     }
     .juego-layout {
         display: flex;
@@ -951,11 +951,11 @@ h2 {
         width: 100vw;
         height: auto;
         max-height: none;
-        padding: 4px;
+        padding: 2px 4px;
         gap: 6px;
         overflow: visible;
     }
-    /* Orden en vertical: 1º Tablero arriba, 2º Controles de turno, 3º Info de sala, stats y cartas */
+    /* Orden en vertical: 1º Tablero arriba del todo, 2º Botonera de turno e indicador, 3º Sala, stats y cartas */
     .col-centro {
         order: 1;
         width: 100%;
@@ -970,7 +970,7 @@ h2 {
         height: auto;
         max-height: none;
         margin: 0 auto;
-        gap: 6px;
+        gap: 5px;
     }
     .col-der {
         order: 3;
@@ -981,7 +981,7 @@ h2 {
         height: auto;
         max-height: none;
         margin: 0 auto;
-        gap: 6px;
+        gap: 5px;
     }
     #board-wrapper {
         width: 96vw;
@@ -990,7 +990,7 @@ h2 {
         max-height: 96vw;
         margin: 0 auto;
         border-width: 3px;
-        border-radius: 10px;
+        border-radius: 12px;
     }
     #board {
         width: 100%;
@@ -1001,59 +1001,102 @@ h2 {
         max-height: 100%;
         padding: 3px;
     }
+    #board-center {
+        width: 66%;
+        height: 66%;
+        border-width: 2px;
+        border-radius: 12px;
+    }
     .cell {
         padding: 1px;
         border-radius: 4px;
-        font-size: 0.65em;
+        font-size: 0.62em;
+        overflow: hidden;
     }
     .cell-name {
-        font-size: 0.6em;
-        line-height: 1.0;
-        margin-bottom: 1px;
+        font-size: 0.56em;
+        line-height: 1.02;
+        margin-bottom: 0;
         word-break: break-word;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
     }
     .cell-price {
-        font-size: 0.58em;
+        font-size: 0.56em;
         padding: 1px 2px;
+        border-radius: 3px;
     }
     .player-piece {
-        width: 16px;
-        height: 16px;
-        font-size: 9px;
-        border-width: 1px;
+        width: 15px;
+        height: 15px;
+        font-size: 8.5px;
+        border-width: 1.5px;
+    }
+    #current-player {
+        margin-bottom: 0;
+        padding: 2px;
     }
     .action-buttons {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 5px;
         width: 100%;
+        margin-top: 0;
     }
+    /* Botón TIRAR DADOS grande (2 columnas) + Dados al lado (1 columna) */
     .action-buttons #roll-btn {
         grid-column: span 2;
+        min-height: 44px;
+        font-size: 0.95em !important;
+        border-radius: 8px;
     }
     .action-buttons .dice-container {
         grid-column: span 1;
         justify-content: center;
+        background: rgba(44, 62, 80, 0.85);
+        border-radius: 8px;
+        padding: 4px;
+        gap: 4px;
+    }
+    .dice {
+        width: 28px;
+        height: 28px;
+        font-size: 1.05em;
+    }
+    #dice-result {
+        display: none;
     }
     .action-buttons button {
-        min-height: 34px;
-        font-size: 0.75em;
-        padding: 6px 4px;
+        min-height: 36px;
+        font-size: 0.74em;
+        padding: 5px 4px;
+        border-radius: 7px;
+    }
+    #player-stats {
+        font-size: 0.74em;
+        padding: 6px 8px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 8px;
     }
     #mazos-container {
         flex-direction: row;
         gap: 8px;
-        margin: 4px 0;
+        margin: 2px 0;
     }
     .mazo-carta {
-        height: 55px;
-        font-size: 0.78em;
+        height: 48px;
+        font-size: 0.75em;
     }
     .mazo-carta .icon {
-        font-size: 1.2em;
+        font-size: 1.15em;
     }
     #game-log {
-        max-height: 100px;
+        max-height: 85px;
+        min-height: 55px;
+        font-size: 0.72em;
     }
 }
 

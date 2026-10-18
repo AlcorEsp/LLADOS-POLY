@@ -486,6 +486,7 @@ function rollDice() {
             updatePlayerPieces();
             turnPhase = 'action';
             document.getElementById('roll-btn').disabled = true;
+            finalizarTurnoAutomatico(900);
             return;
         }
         
@@ -502,15 +503,39 @@ function rollDice() {
     turnPhase = 'action';
     document.getElementById('roll-btn').disabled = true;
     updateButtonStates();
-    
-    if (isDouble && !player.inJail && doblesConsecutivos < 3) {
-        setTimeout(function() {
-            turnPhase = 'roll';
-            document.getElementById('roll-btn').disabled = false;
-            updateButtonStates();
-            addLogEntry('🎲 ' + player.name + ' DEBE tirar otra vez por sacar dobles');
-        }, 2000);
+}
+
+// Avanza automáticamente al siguiente jugador cuando termina la acción de la casilla (o habilita tirar de nuevo si sacó dobles)
+var autoNextTurnTimer = null;
+function finalizarTurnoAutomatico(delayMs) {
+    if (gameState !== 'playing') return;
+    var wait = typeof delayMs === 'number' ? delayMs : 800;
+    if (autoNextTurnTimer) {
+        clearTimeout(autoNextTurnTimer);
+        autoNextTurnTimer = null;
     }
+    autoNextTurnTimer = setTimeout(function() {
+        autoNextTurnTimer = null;
+        if (gameState !== 'playing') return;
+        var player = players[currentPlayer - 1];
+        if (!player) return;
+
+        // Si sacó dobles y no está en la cárcel, vuelve a tirar el mismo jugador
+        if (debeSeguitTirando && !player.inJail && doblesConsecutivos < 3) {
+            turnPhase = 'roll';
+            var rollBtn = document.getElementById('roll-btn');
+            if (rollBtn) rollBtn.disabled = false;
+            updateButtonStates();
+            addLogEntry('🎲 ¡' + player.name + ' sacó dobles y tira otra vez!');
+            if (typeof window.showExtraRollNotification === 'function') {
+                window.showExtraRollNotification(player.name);
+            }
+            return;
+        }
+
+        // Pasar automáticamente al siguiente jugador
+        nextPlayer();
+    }, wait);
 }
 
 function nextPlayer() {
@@ -589,6 +614,8 @@ function buyProperty() {
         
         verificarMonopolio(cellData.zone, player.id);
         updatePlayerDisplay();
+        cerrarOpcionesCasilla();
+        finalizarTurnoAutomatico(800);
     } else if (cellData.type === 'property' && cellData.owner) {
         addLogEntry('❌ Esta propiedad ya tiene dueño');
     } else if (cellData.type !== 'property') {
@@ -645,6 +672,8 @@ function buildConstruction() {
             
             updateCellDisplay(player.position);
             updatePlayerDisplay();
+            cerrarOpcionesCasilla();
+            finalizarTurnoAutomatico(800);
         } else {
             addLogEntry('❌ Necesitas €' + cost + ' para construir una mentoría');
         }
@@ -925,9 +954,18 @@ function handlePropertyLanding(player, cellData, position) {
         addLogEntry('🏠 ' + player.name + ' está en su propia propiedad');
         if (cellData.zone && cellData.constructions < 4) {
             var zone = zoneData[cellData.zone];
-            addLogEntry('💡 Puedes construir mentoría por €' + zone.mentorCost);
-            // Mostrar opciones para propiedades propias
-            mostrarOpcionesCasilla(player, cellData, position);
+            if (zone && player.money >= zone.mentorCost) {
+                addLogEntry('💡 Puedes construir mentoría por €' + zone.mentorCost);
+                mostrarOpcionesCasilla(player, cellData, position);
+            } else {
+                updatePlayerDisplay();
+                finalizarTurnoAutomatico(800);
+                return;
+            }
+        } else {
+            updatePlayerDisplay();
+            finalizarTurnoAutomatico(800);
+            return;
         }
     }
     updatePlayerDisplay();
@@ -940,11 +978,15 @@ function handleTax(player, cellData) {
 function handleSpecialAction(player, cellData) {
     if (cellData.effect === 'lose_turn') {
         addLogEntry('😴 ' + player.name + ' come en el coche y pierde el turno');
-        nextPlayer();
+        debeSeguitTirando = false;
+        doblesConsecutivos = 0;
+        finalizarTurnoAutomatico(700);
     } else if (cellData.effect === 'wifi_premium') {
         mostrarPopupWifiPremium(player);
     } else if (cellData.effect === 'instagram_verificado') {
         mostrarPopupInstagramVerificado(player);
+    } else {
+        finalizarTurnoAutomatico(800);
     }
 }
 
@@ -952,12 +994,16 @@ function handleCorner(player, cellData) {
     switch(cellData.name) {
         case "DESPERTAR DEL SISTEMA":
             addLogEntry('🏠 ' + player.name + ' está en DESPERTAR DEL SISTEMA');
+            finalizarTurnoAutomatico(800);
             break;
         case "OSCURIDAD MENTAL":
             if (!player.inJail) {
                 player.inJail = true;
                 player.jailTurns = 0;
+                debeSeguitTirando = false;
+                doblesConsecutivos = 0;
                 addLogEntry('🌑 ' + player.name + ' entró en OSCURIDAD MENTAL');
+                finalizarTurnoAutomatico(900);
             } else {
                 // Si ya está en la cárcel, mostrar opciones
                 mostrarOpcionesCarcel(player);
@@ -965,16 +1011,21 @@ function handleCorner(player, cellData) {
             break;
         case "COWORKING GRATUITO":
             addLogEntry('☕ ' + player.name + ' descansa en COWORKING GRATUITO');
+            finalizarTurnoAutomatico(800);
             break;
         case "IR AL SISTEMA":
             player.inJail = true;
             player.jailTurns = 0;
             player.position = 10; // Posición de OSCURIDAD MENTAL
+            debeSeguitTirando = false;
+            doblesConsecutivos = 0;
             addLogEntry('🌑 ' + player.name + ' fue enviado a OSCURIDAD MENTAL');
             updatePlayerPieces();
+            finalizarTurnoAutomatico(900);
             break;
         default:
             addLogEntry('📍 ' + player.name + ' está en ' + cellData.name);
+            finalizarTurnoAutomatico(800);
     }
 }
 
@@ -1000,12 +1051,21 @@ function mostrarPopupCarta(cardType, playerId) {
 function aceptarCartaPopup() {
     if (cartaPendiente && tipoCartaPendiente && jugadorCartaPendiente) {
         addLogEntry('🃏 ' + players[jugadorCartaPendiente-1].name + ' robó carta: ' + tipoCartaPendiente);
-        aplicarEfectoCarta(cartaPendiente, tipoCartaPendiente, jugadorCartaPendiente);
+        var cardText = cartaPendiente;
+        var cardType = tipoCartaPendiente;
+        var playerId = jugadorCartaPendiente;
+        cerrarPopupCarta();
+        cartaPendiente = null;
+        tipoCartaPendiente = null;
+        jugadorCartaPendiente = null;
+        aplicarEfectoCarta(cardText, cardType, playerId);
+        return;
     }
     cerrarPopupCarta();
     cartaPendiente = null;
     tipoCartaPendiente = null;
     jugadorCartaPendiente = null;
+    finalizarTurnoAutomatico(800);
 }
 
 function cerrarPopupCarta() {
@@ -1047,6 +1107,7 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
         }
         
         updatePlayerDisplay();
+        finalizarTurnoAutomatico(800);
         return; // No aplicar el efecto negativo
     }
 
@@ -1081,6 +1142,9 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
         setTimeout(function() {
             turnPhase = 'roll';
             document.getElementById('roll-btn').disabled = false;
+            if (typeof window.showExtraRollNotification === 'function') {
+                window.showExtraRollNotification(player.name);
+            }
         }, 1000);
         return;
     }
@@ -1128,6 +1192,8 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
                 updateCellDisplay(propiedadMasCara);
             }
         }
+        updatePlayerDisplay();
+        finalizarTurnoAutomatico(800);
         return;
     }
     
@@ -1167,17 +1233,21 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
     if (cardText.includes('Tu madre te dice que consigas trabajo')) {
         player.money = Math.max(0, player.money - 300);
         addLogEntry('👩 ' + player.name + ' perdió €300 y el turno por crisis existencial');
-        nextPlayer();
+        debeSeguitTirando = false;
+        doblesConsecutivos = 0;
+        finalizarTurnoAutomatico(700);
         return;
     }
     
     if (cardText.includes('Te cancelan por comentario antiguo')) {
         player.position = Math.max(0, player.position - 5);
         updatePlayerPieces();
+        addLogEntry('🚫 ' + player.name + ' retrocedió 5 casillas y pierde 1 propiedad por cancelación');
         if (player.properties.length > 0) {
             procesarPerderPropiedad(playerId);
+        } else {
+            finalizarTurnoAutomatico(800);
         }
-        addLogEntry('🚫 ' + player.name + ' retrocedió 5 casillas y pierde 1 propiedad por cancelación');
         return;
     }
     
@@ -1266,7 +1336,6 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
     }
     
     if (cardText.includes('Robas ideas ajenas')) {
-        procesarRobarPropiedad(playerId);
         for (var i = 0; i < players.length; i++) {
             if (i !== playerId - 1 && !players[i].bankrupt) {
                 var cantidadPagar = Math.min(500, player.money);
@@ -1277,6 +1346,7 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
             }
         }
         addLogEntry('🔄 ' + player.name + ' robó 1 propiedad pero pagó €500 a cada jugador por karma');
+        procesarRobarPropiedad(playerId);
         return;
     }
     
@@ -1449,6 +1519,7 @@ function aplicarEfectoCarta(cardText, cardType, playerId) {
     }
 
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 function updatePlayerDisplay() {
@@ -1962,6 +2033,7 @@ function procesarPerderPropiedad(jugadorId) {
     
     if (opciones.length === 0) {
         addLogEntry('❌ ' + players[jugadorId-1].name + ' no tiene propiedades que perder');
+        finalizarTurnoAutomatico(800);
         return;
     }
     
@@ -1980,6 +2052,7 @@ function procesarRobarPropiedad(jugadorId) {
     
     if (jugadoresValidos.length === 0) {
         addLogEntry('❌ No hay jugadores con propiedades para robar');
+        finalizarTurnoAutomatico(800);
         return;
     }
     
@@ -2007,6 +2080,7 @@ function procesarPerderCartaEspecial(jugadorId) {
     
     if (opciones.length === 0) {
         addLogEntry('❌ ' + players[jugadorId-1].name + ' no tiene cartas especiales que perder');
+        finalizarTurnoAutomatico(800);
         return;
     }
     
@@ -2025,6 +2099,7 @@ function procesarRobarCartaEspecial(jugadorId) {
     
     if (jugadoresValidos.length === 0) {
         addLogEntry('❌ No hay jugadores con cartas especiales para robar');
+        finalizarTurnoAutomatico(800);
         return;
     }
     
@@ -2074,6 +2149,7 @@ function aplicarPerderPropiedad(jugadorId, propiedadId) {
     
     addLogEntry('🏠💔 ' + player.name + ' perdió ' + cellData.name);
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 function aplicarRobarPropiedad(ladronId, victimaId, propiedadId) {
@@ -2102,6 +2178,7 @@ function aplicarRobarPropiedad(ladronId, victimaId, propiedadId) {
     
     addLogEntry('🏠🔄 ' + ladron.name + ' robó ' + cellData.name + ' a ' + victima.name);
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 function aplicarPerderCartaEspecial(jugadorId, cartaId) {
@@ -2113,6 +2190,7 @@ function aplicarPerderCartaEspecial(jugadorId, cartaId) {
     }
     
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 function aplicarRobarCartaEspecial(ladronId, victimaId, cartaId) {
@@ -2126,6 +2204,7 @@ function aplicarRobarCartaEspecial(ladronId, victimaId, cartaId) {
     }
     
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 // ========================================
@@ -2296,6 +2375,7 @@ function finalizarSubasta() {
     
     document.getElementById('popup-subasta').style.display = 'none';
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 // 2. PAGO PARA SALIR DE CÁRCEL
@@ -2704,6 +2784,7 @@ function mostrarOpcionesCasilla(player, cellData, position) {
     // Botón para continuar sin hacer nada
     var btnContinuar = crearBotonOpcion('⏭️ CONTINUAR', 'pasar-turno', function() {
         cerrarOpcionesCasilla();
+        finalizarTurnoAutomatico(400);
     });
     botonesContainer.appendChild(btnContinuar);
     
@@ -2769,7 +2850,6 @@ function cerrarOpcionesCasilla() {
     opcionesVisual.classList.remove('impuesto');
     
     popup.style.display = 'none';
-    document.getElementById('roll-btn').disabled = false;
 }
 
 function comprarPropiedadDirecta(position) {
@@ -2795,6 +2875,7 @@ function comprarPropiedadDirecta(position) {
     } else {
         addLogEntry('❌ ' + player.name + ' no tiene suficiente dinero para comprar ' + cellData.name);
     }
+    finalizarTurnoAutomatico(800);
 }
 
 function construirMentoriaDirecta(position) {
@@ -2816,6 +2897,7 @@ function construirMentoriaDirecta(position) {
     } else {
         addLogEntry('❌ ' + player.name + ' no tiene suficiente dinero para construir');
     }
+    finalizarTurnoAutomatico(800);
 }
 
 function pagarCarcelDirecta() {
@@ -2963,6 +3045,7 @@ function mostrarPopupImpuesto(player, cellData) {
                 cerrarOpcionesCasilla();
                 addLogEntry('💔 ' + player.name + ' no puede pagar €' + impuesto + ' y se declara en bancarrota');
                 handleBankruptcy(player);
+                finalizarTurnoAutomatico(800);
             });
             botonesContainer.appendChild(btnBancarrota);
         }
@@ -2984,6 +3067,7 @@ function pagarImpuestoDirecto(player, cantidad, mensaje) {
         addLogEntry('💔 ' + player.name + ' no puede pagar €' + cantidad + ' y se declara en bancarrota');
         handleBankruptcy(player);
     }
+    finalizarTurnoAutomatico(800);
 }
 
 // SISTEMA DE POPUP PARA WIFI PREMIUM
@@ -3058,6 +3142,7 @@ function cobrarWifiPremium(player) {
     }
     
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 // SISTEMA DE POPUP PARA INSTAGRAM VERIFICADO
@@ -3132,6 +3217,7 @@ function cobrarInstagramVerificado(player) {
     }
     
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 // SISTEMA DE POPUP PARA PAGO DE RENTA
@@ -3241,6 +3327,7 @@ function pagarRentaDirecta() {
     document.getElementById('popup-renta').style.display = 'none';
     rentaPendiente = null;
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 // SISTEMA DE DEUDAS
@@ -3384,6 +3471,7 @@ function handleDigitalStation(player, cellData, position) {
     } else if (cellData.owner === player.id) {
         // Es tu propia estación
         addLogEntry('📱 ' + player.name + ' está en su propia estación digital');
+        finalizarTurnoAutomatico(800);
     } else {
         // Pagar alquiler a otro jugador
         var owner = players[cellData.owner - 1];
@@ -3394,6 +3482,7 @@ function handleDigitalStation(player, cellData, position) {
         } else {
             crearDeuda(player.id, cellData.owner, rent, 'Alquiler de ' + cellData.name);
             addLogEntry('💸 ' + player.name + ' debe €' + rent + ' a ' + owner.name + ' por ' + cellData.name);
+            finalizarTurnoAutomatico(800);
         }
     }
 }
@@ -3447,6 +3536,7 @@ function mostrarOpcionesEstacionDigital(player, cellData, position) {
     // Botón para continuar
     var btnContinuar = crearBotonOpcion('⏭️ CONTINUAR', 'pasar-turno', function() {
         cerrarOpcionesCasilla();
+        finalizarTurnoAutomatico(400);
     });
     botonesContainer.appendChild(btnContinuar);
     
@@ -3495,6 +3585,7 @@ function comprarEstacionDigital(position) {
     } else {
         addLogEntry('❌ ' + player.name + ' no tiene suficiente dinero para comprar ' + cellData.name);
     }
+    finalizarTurnoAutomatico(800);
 }
 
 function mostrarPopupRentaEstacion(player, owner, cellData, rent) {
@@ -3538,9 +3629,9 @@ function pagarRentaEstacionDirecta(playerId, ownerId, rent, stationName) {
     
     // Cerrar popup
     document.getElementById('popup-renta').style.display = 'none';
-    document.getElementById('roll-btn').disabled = false;
     
     updatePlayerDisplay();
+    finalizarTurnoAutomatico(800);
 }
 
 // ===== SISTEMAS LLADOS AVANZADOS =====

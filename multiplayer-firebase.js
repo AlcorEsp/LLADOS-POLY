@@ -1934,18 +1934,10 @@ function autoManageTurnState() {
         console.log('  📍 Posición actual:', currentPosition);
         console.log('  🏠 Propiedades:', currentPlayerData.properties ? currentPlayerData.properties.length : 0);
         
-        // Si no puede hacer nada más, automáticamente preparar para pasar turno
+        // Si no puede hacer nada más, el sistema automático finalizarTurnoAutomatico se encarga de pasar turno
         if (!canBuyProperty && !hasOtherActions && !window.debeSeguitTirando) {
-            console.log('✅ No hay más acciones disponibles - preparando para pasar turno');
-            
-            // Cambiar a fase de finalización de turno
-            window.turnPhase = 'end';
-            
-            // Actualizar controles para mostrar solo el botón de pasar turno
-            updateControlsForTurnEnd();
-            
-            // Mostrar notificación al jugador
-            showTurnEndNotification();
+            console.log('✅ No hay más acciones disponibles - el turno pasará automáticamente');
+            updateControlsForTurn();
         } else {
             console.log('⏳ Todavía hay acciones disponibles');
             updateControlsForTurn();
@@ -2140,18 +2132,7 @@ function updateControlsForTurn() {
         }
         
         if (nextBtn) {
-            const canNext = isMyTurn && window.turnPhase !== 'roll' && !window.debeSeguitTirando;
-            nextBtn.disabled = !canNext;
-            nextBtn.style.cssText = canNext ? activeStyle : disabledStyle;
-            
-            if (canNext) {
-                nextBtn.textContent = '⏭️ PASAR TURNO';
-                nextBtn.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-                nextBtn.style.color = 'white';
-                nextBtn.style.boxShadow = '0 0 10px rgba(40, 167, 69, 0.5)';
-            } else {
-                nextBtn.textContent = '⏭️ PASAR TURNO';
-            }
+            nextBtn.style.display = 'none';
         }
         
         // Botones de acción secundarios
@@ -2278,14 +2259,18 @@ function updateTurnIndicator() {
             document.head.appendChild(style);
         }
         
+        const playerMoney = typeof currentPlayerData.money === 'number' ? currentPlayerData.money : 2500;
+        const playerFollowers = typeof currentPlayerData.followers === 'number' ? currentPlayerData.followers : 100;
         currentPlayerDisplay.innerHTML = `
-            <div style="background: ${bgColor}; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 12px; border: 3px solid ${borderColor}; position: relative; overflow: hidden;" ${pulseClass}>
-                ${isMyTurnNow ? '<div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700); animation: shimmer 2s infinite;"></div>' : ''}
-                <strong style="font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${turnText}</strong><br>
-                <small style="opacity: 0.9; margin: 8px 0; display: block;">Jugador ${window.currentPlayer || 1}/${window.players.length}</small>
-                <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-top: 8px;">
-                    <small style="font-weight: bold;">${actionText}</small>
-                    ${window.doblesConsecutivos > 0 ? `<br><small style="color: #ffd700;">🎲 Dobles: ${window.doblesConsecutivos}/3</small>` : ''}
+            <div class="turn-status-card" style="background: ${bgColor}; color: white; padding: 8px 10px; border-radius: 10px; text-align: center; border: 2px solid ${borderColor}; position: relative; overflow: hidden;" ${pulseClass}>
+                ${isMyTurnNow ? '<div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700); animation: shimmer 2s infinite;"></div>' : ''}
+                <div style="font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.4);">${turnText}</div>
+                <div style="font-size: 12px; margin-top: 3px; font-weight: bold; color: #fde047;">
+                    ${currentPlayerData.name || 'Jugador'} · 💰 €${playerMoney} · 📈 ${playerFollowers}
+                </div>
+                <div style="background: rgba(0,0,0,0.22); padding: 4px 6px; border-radius: 5px; margin-top: 4px; font-size: 11px;">
+                    <span>${actionText}</span>
+                    ${window.doblesConsecutivos > 0 ? ` <strong style="color: #ffd700;">(🎲 Dobles: ${window.doblesConsecutivos}/3)</strong>` : ''}
                 </div>
             </div>
         `;
@@ -3263,41 +3248,93 @@ function updateGameInterface() {
     }
 }
 
-// Mostrar notificación de turno
+// Mostrar notificación de turno (con botón directo para tirar dados)
 function showTurnNotification() {
-    // Crear notificación temporal
+    // Evitar duplicados
+    const prev = document.getElementById('turn-banner-notification');
+    if (prev) prev.remove();
+
+    const currentPlayerData = window.players && window.players[window.currentPlayer - 1];
+    const playerName = currentPlayerData ? currentPlayerData.name : 'Jugador';
+
     const notification = document.createElement('div');
+    notification.id = 'turn-banner-notification';
     notification.style.cssText = `
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: linear-gradient(135deg, #28a745, #20c997);
+        background: linear-gradient(135deg, #16a34a, #059669);
         color: white;
-        padding: 20px 30px;
-        border-radius: 15px;
-        font-size: 24px;
+        padding: 18px 26px;
+        border-radius: 16px;
+        font-size: 20px;
         font-weight: bold;
-        z-index: 2000;
+        z-index: 3000;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.45);
+        border: 3px solid #fde047;
         animation: pulse 0.5s ease-in-out;
+        max-width: 88vw;
     `;
     
     notification.innerHTML = `
-        🎯 <strong>¡TU TURNO!</strong><br>
-        <div style="font-size: 16px; margin-top: 8px;">Es tu momento de jugar</div>
+        <div style="font-size: 22px; margin-bottom: 6px;">🎲 <strong>¡TU TURNO, ${playerName.toUpperCase()}!</strong></div>
+        <div style="font-size: 14px; opacity: 0.95; margin-bottom: 12px;">Tira los dados para mover tu ficha</div>
+        <button onclick="document.getElementById('turn-banner-notification')?.remove(); if(typeof rollDice==='function') rollDice();" 
+                style="background: #fde047; color: #111827; border: none; padding: 10px 22px; border-radius: 10px; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+            🎲 TIRAR DADOS AHORA
+        </button>
     `;
     
     document.body.appendChild(notification);
     
-    // Remover después de 3 segundos
+    // Auto-cerrar después de 3.5 segundos si no pulsa el botón del popup (o al tirar dados)
     setTimeout(() => {
         if (notification.parentNode) {
             notification.remove();
         }
-    }, 3000);
+    }, 3500);
 }
+
+// Notificación cuando saca dobles o tirada extra
+window.showExtraRollNotification = function(playerName) {
+    if (!isMyTurn) return;
+    const prev = document.getElementById('turn-banner-notification');
+    if (prev) prev.remove();
+
+    const notification = document.createElement('div');
+    notification.id = 'turn-banner-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #ea580c, #d97706);
+        color: white;
+        padding: 18px 26px;
+        border-radius: 16px;
+        font-size: 20px;
+        font-weight: bold;
+        z-index: 3000;
+        text-align: center;
+        box-shadow: 0 12px 35px rgba(0,0,0,0.45);
+        border: 3px solid #fde047;
+        max-width: 88vw;
+    `;
+    notification.innerHTML = `
+        <div style="font-size: 21px; margin-bottom: 6px;">🔥 <strong>¡TIRADA EXTRA!</strong></div>
+        <div style="font-size: 14px; opacity: 0.95; margin-bottom: 12px;">¡Vuelve a tirar los dados!</div>
+        <button onclick="document.getElementById('turn-banner-notification')?.remove(); if(typeof rollDice==='function') rollDice();" 
+                style="background: #fde047; color: #111827; border: none; padding: 10px 22px; border-radius: 10px; font-size: 16px; font-weight: 900; cursor: pointer;">
+            🎲 TIRAR DE NUEVO
+        </button>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        if (notification.parentNode) notification.remove();
+    }, 3500);
+};
 
 // Esperar a que las funciones del juego estén disponibles
 function waitForGameFunctions() {

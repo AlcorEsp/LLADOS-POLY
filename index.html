@@ -109,18 +109,6 @@
     <!-- Contenedor oculto para streams de audio remotos WebRTC -->
     <div id="remote-audios" style="display: none;"></div>
 
-    <!-- Aviso para girar el móvil a horizontal (solo visible en móvil vertical) -->
-    <div id="rotate-device-banner" class="rotate-device-banner">
-        <div class="rotate-banner-content">
-            <span class="rotate-icon">📱🔄</span>
-            <div class="rotate-text">
-                <strong>¡Gira el móvil en horizontal!</strong>
-                <span>Para ver el tablero completo y jugar cómodamente</span>
-            </div>
-            <button class="rotate-close-btn" onclick="document.getElementById('rotate-device-banner').style.display='none'">✕</button>
-        </div>
-    </div>
-
     <!-- Pantalla de juego -->
     <div id="game-container" style="display: none;">
         <!-- Indicador oculto para mantener compatibilidad con referencias JS -->
@@ -144,7 +132,7 @@
                     <button id="build-btn" onclick="buildConstruction()">🏗️ CONSTRUIR</button>
                     <button id="jail-btn" onclick="pagarCarcel()">🔓 PAGAR CÁRCEL</button>
                     <button id="trade-btn" onclick="iniciarIntercambio()">🔄 INTERCAMBIAR</button>
-                    <button id="next-btn" onclick="nextPlayer()">⏭️ PASAR TURNO</button>
+                    <button id="next-btn" onclick="nextPlayer()" style="display: none !important;">⏭️ PASAR TURNO</button>
                     <button onclick="showPlayerProperties()">📊 PROPIEDADES</button>
                     <button onclick="mostrarCartasGuardadas()">🃏 MIS CARTAS</button>
                     <button onclick="mostrarMenuSeguidores(currentPlayer)">📈 SEGUIDORES</button>
