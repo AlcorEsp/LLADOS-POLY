@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonoLLADOS Multiplayer Online - El Juego del Éxito</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="multiplayer-styles.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
+    <!-- Configuración Firebase -->
+    <script src="firebase-config.js"></script>
+</head>
+<body>
+    <div class="game-header">
+        <h1 id="theme-main-title">🐒 MonoLLADOS Multiplayer Online</h1>
+        <p id="theme-main-subtitle">El Juego del Éxito (o del Coche Dormitorio)</p>
+    </div>
+
+    <!-- Pantalla de conexión multiplayer -->
+    <div class="multiplayer-screen" id="multiplayer-screen">
+        <h2>🌐 Modo Multiplayer Online</h2>
+        
+        <div class="multiplayer-options">
+            <div class="option-card">
+                <h3>🎮 Crear Sala Online</h3>
+                <p>Crea una nueva partida online y comparte el código con tus amigos en cualquier parte del mundo</p>
+                <input type="text" id="host-name" placeholder="Tu nombre" maxlength="15" value="">
+                <button class="multiplayer-btn" onclick="createRoom()">🚀 Crear Sala Online</button>
+            </div>
+            
+            <div class="option-card">
+                <h3>🔗 Unirse a Sala Online</h3>
+                <p>Ingresa el código que te compartió tu amigo para unirte desde cualquier dispositivo</p>
+                <input type="text" id="join-name" placeholder="Tu nombre" maxlength="15" value="">
+                <input type="text" id="room-code" placeholder="Código de sala (6 caracteres)" maxlength="6">
+                <button class="multiplayer-btn" onclick="joinRoom()">🌐 Unirse Online</button>
+            </div>
+        </div>
+
+        <div class="connection-status" id="connection-status">🔄 Conectando a Firebase...</div>
+        
+        <div class="demo-info">
+            <h3>🚀 ¡Juega Online con Amigos!</h3>
+            <p><strong>Sincronización en tiempo real + Voz y Cámara P2P:</strong></p>
+            <ol>
+                <li><strong>Crea una sala</strong> y obtén un código de 6 caracteres</li>
+                <li><strong>Comparte el código o enlace</strong> por WhatsApp o Discord</li>
+                <li><strong>Tus amigos se conectan</strong> desde cualquier dispositivo</li>
+                <li><strong>¡Jueguen en tiempo real!</strong> Con chat de voz y webcams integradas</li>
+            </ol>
+            <p>🌍 <strong>Funciona globalmente</strong> desde navegador sin instalar nada</p>
+        </div>
+    </div>
+
+    <!-- Pantalla de lobby -->
+    <div class="lobby-screen" id="lobby-screen" style="display: none;">
+        <h2>🏠 Sala Online: <span id="room-code-display"></span></h2>
+        
+        <div class="lobby-info">
+            <div class="room-code-share">
+                <h3>📋 Comparte este código con tus amigos:</h3>
+                <div class="code-display" id="code-to-share"></div>
+                <button class="copy-btn" onclick="copyRoomCode()">📋 Copiar Código</button>
+                <p class="share-instruction">🌍 Tus amigos pueden unirse desde <strong>cualquier parte del mundo</strong> con este código</p>
+            </div>
+            
+            <div class="players-waiting">
+                <h3>👥 Jugadores conectados online:</h3>
+                <div id="players-list"></div>
+                <div class="waiting-message">Esperando más jugadores (2 a 4 jugadores)...</div>
+            </div>
+            
+            <!-- CHAT DE VOZ EN LOBBY -->
+            <div class="lobby-voice-chat">
+                <h3>🎤 Chat de Voz P2P</h3>
+                <p class="voice-description">¡Habla con tus amigos en directo mientras esperan y durante la partida!</p>
+                
+                <div class="lobby-voice-status">
+                    <div id="lobby-voice-status">Desconectado</div>
+                </div>
+                
+                <div class="lobby-voice-controls">
+                    <button id="lobby-join-voice-btn" onclick="joinVoiceChat()">🎤 UNIRSE AL CHAT</button>
+                    <button id="lobby-leave-voice-btn" onclick="leaveVoiceChat()" style="display: none;">🔇 SALIR DEL CHAT</button>
+                    <button id="lobby-mute-btn" onclick="toggleMute()" style="display: none;">🔇 SILENCIAR</button>
+                </div>
+                
+                <div class="lobby-voice-participants">
+                    <div class="lobby-voice-participant-header">👥 En el chat de voz:</div>
+                    <div id="lobby-participants-list">
+                        <div class="no-participants">Nadie conectado al chat</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="lobby-controls">
+            <button class="start-button" id="start-multiplayer-btn" onclick="startMultiplayerGame()" disabled>
+                🚀 EMPEZAR JUEGO ONLINE (Mín. 2 jugadores)
+            </button>
+            <button class="leave-button" onclick="leaveRoom()">❌ Salir de la Sala</button>
+        </div>
+    </div>
+
+    <!-- Contenedor oculto para streams de audio remotos WebRTC -->
+    <div id="remote-audios" style="display: none;"></div>
+
+    <!-- Pantalla de juego -->
+    <div id="game-container" style="display: none;">
+        <!-- Indicador de conexión multiplayer -->
+        <div class="multiplayer-status" style="position: fixed; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.8em;">
+            <span id="connection-indicator">🟢 Online</span>
+            <span id="room-info">Sala: <span id="current-room-code"></span></span>
+            <span id="turn-indicator"></span>
+        </div>
+
+        <div class="juego-layout">
+            <div class="col-izq">
+                <div id="current-player"></div>
+                <div class="action-buttons">
+                    <button id="roll-btn" onclick="rollDice()">🎲 TIRAR DADOS</button>
+                    <div class="dice-container">
+                        <div id="dice1" class="dice">?</div>
+                        <div id="dice2" class="dice">?</div>
+                        <div id="dice-result"></div>
+                    </div>
+                    <button id="buy-btn" onclick="buyProperty()">🏠 COMPRAR</button>
+                    <button id="build-btn" onclick="buildConstruction()">🏗️ CONSTRUIR</button>
+                    <button id="jail-btn" onclick="pagarCarcel()">🔓 PAGAR CÁRCEL</button>
+                    <button id="trade-btn" onclick="iniciarIntercambio()">🔄 INTERCAMBIAR</button>
+                    <button id="next-btn" onclick="nextPlayer()">⏭️ PASAR TURNO</button>
+                    <button onclick="showPlayerProperties()">📊 PROPIEDADES</button>
+                    <button onclick="mostrarCartasGuardadas()">🃏 MIS CARTAS</button>
+                    <button onclick="mostrarMenuSeguidores(currentPlayer)">📈 SEGUIDORES</button>
+                    <button onclick="mostrarLogros()">🏆 LOGROS</button>
+                    <button onclick="showRules()">📖 REGLAS</button>
+                    <button onclick="leaveRoom()">🚪 SALIR SALA</button>
+                </div>
+            </div>
+            <div class="col-centro">
+                <div id="board-wrapper">
+                    <div id="board"></div>
+                    <div id="board-center">
+                        <img src="img/monollados_central.PNG" alt="Monollados" id="center-image">
+                        
+                        <!-- Sistema de Webcams P2P -->
+                        <div id="webcam-container">
+                            <div class="webcam-slot" id="webcam-slot-1">
+                                <video id="webcam-video-1" autoplay muted playsinline></video>
+                                <div class="webcam-overlay">
+                                    <div class="webcam-player-name" id="webcam-name-1">Jugador 1</div>
+                                    <div class="webcam-controls">
+                                        <button class="webcam-toggle" onclick="toggleWebcam(1)" title="Activar/Desactivar cámara">📹</button>
+                                    </div>
+                                    <div class="webcam-status" id="webcam-status-1">Inactivo</div>
+                                </div>
+                            </div>
+                            
+                            <div class="webcam-slot" id="webcam-slot-2">
+                                <video id="webcam-video-2" autoplay muted playsinline></video>
+                                <div class="webcam-overlay">
+                                    <div class="webcam-player-name" id="webcam-name-2">Jugador 2</div>
+                                    <div class="webcam-controls">
+                                        <button class="webcam-toggle" onclick="toggleWebcam(2)" title="Activar/Desactivar cámara">📹</button>
+                                    </div>
+                                    <div class="webcam-status" id="webcam-status-2">Inactivo</div>
+                                </div>
+                            </div>
+                            
+                            <div class="webcam-slot" id="webcam-slot-3">
+                                <video id="webcam-video-3" autoplay muted playsinline></video>
+                                <div class="webcam-overlay">
+                                    <div class="webcam-player-name" id="webcam-name-3">Jugador 3</div>
+                                    <div class="webcam-controls">
+                                        <button class="webcam-toggle" onclick="toggleWebcam(3)" title="Activar/Desactivar cámara">📹</button>
+                                    </div>
+                                    <div class="webcam-status" id="webcam-status-3">Inactivo</div>
+                                </div>
+                            </div>
+                            
+                            <div class="webcam-slot" id="webcam-slot-4">
+                                <video id="webcam-video-4" autoplay muted playsinline></video>
+                                <div class="webcam-overlay">
+                                    <div class="webcam-player-name" id="webcam-name-4">Jugador 4</div>
+                                    <div class="webcam-controls">
+                                        <button class="webcam-toggle" onclick="toggleWebcam(4)" title="Activar/Desactivar cámara">📹</button>
+                                    </div>
+                                    <div class="webcam-status" id="webcam-status-4">Inactivo</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Control general de webcams -->
+                        <div id="webcam-general-controls">
+                            <button id="toggle-all-webcams" onclick="toggleWebcamsVisibility()" title="Mostrar/Ocultar todas las webcams">👁️ Webcams</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="popup-carta">
+                    <div class="carta-visual" id="popup-carta-visual">
+                        <button class="cerrar" onclick="cerrarPopupCarta()">×</button>
+                        <div class="titulo" id="popup-carta-titulo"></div>
+                        <div class="texto" id="popup-carta-texto"></div>
+                        <button class="aceptar-carta" id="popup-carta-aceptar" onclick="aceptarCartaPopup()">Aceptar</button>
+                    </div>
+                </div>
+                
+                <!-- Popup de selección de objetos -->
+                <div id="popup-seleccion">
+                    <div class="seleccion-visual" id="popup-seleccion-visual">
+                        <div class="seleccion-header">
+                            <div class="seleccion-titulo" id="popup-seleccion-titulo">SELECCIONA OBJETO</div>
+                            <div class="seleccion-subtitulo" id="popup-seleccion-subtitulo">Elige una opción para continuar</div>
+                        </div>
+                        <div class="seleccion-opciones" id="popup-seleccion-opciones">
+                            <!-- Las opciones se generarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup de subasta -->
+                <div id="popup-subasta">
+                    <div class="subasta-visual">
+                        <div class="subasta-header">
+                            <div class="subasta-titulo">🔨 SUBASTA</div>
+                            <div class="subasta-propiedad" id="subasta-propiedad-nombre"></div>
+                            <div class="subasta-precio" id="subasta-precio-base"></div>
+                        </div>
+                        <div class="subasta-info">
+                            <div class="puja-actual">Puja actual: €<span id="puja-actual">0</span></div>
+                            <div class="pujador-actual">Pujador: <span id="pujador-actual">-</span></div>
+                        </div>
+                        <div class="subasta-controles">
+                            <input type="number" id="nueva-puja" placeholder="Tu puja" min="0" step="10">
+                            <button onclick="realizarPuja()">💰 PUJAR</button>
+                            <button onclick="pasarSubasta()">❌ PASAR</button>
+                        </div>
+                        <div class="jugadores-subasta" id="jugadores-subasta"></div>
+                    </div>
+                </div>
+
+                <!-- Popup de intercambio -->
+                <div id="popup-intercambio">
+                    <div class="intercambio-visual">
+                        <div class="intercambio-header">
+                            <div class="intercambio-titulo">🔄 INTERCAMBIO</div>
+                            <div class="intercambio-jugadores">
+                                <span id="jugador1-intercambio"></span> ↔ <span id="jugador2-intercambio"></span>
+                            </div>
+                        </div>
+                        <div class="intercambio-ofertas">
+                            <div class="oferta-lado">
+                                <h4>Tu oferta:</h4>
+                                <div id="oferta-jugador1"></div>
+                                <button onclick="añadirAOferta(1)">➕ Añadir</button>
+                            </div>
+                            <div class="oferta-lado">
+                                <h4>Su oferta:</h4>
+                                <div id="oferta-jugador2"></div>
+                                <button onclick="añadirAOferta(2)">➕ Añadir</button>
+                            </div>
+                        </div>
+                        <div class="intercambio-controles">
+                            <button onclick="enviarOfertaIntercambio()">📤 ENVIAR OFERTA</button>
+                            <button onclick="aceptarIntercambio()">✅ ACEPTAR</button>
+                            <button onclick="rechazarIntercambio()">❌ RECHAZAR</button>
+                            <button onclick="cerrarIntercambio()">🚪 CERRAR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup de cartas guardadas -->
+                <div id="popup-cartas-guardadas">
+                    <div class="cartas-visual">
+                        <div class="cartas-header">
+                            <div class="cartas-titulo">🃏 MIS CARTAS ESPECIALES</div>
+                            <button class="cerrar" onclick="cerrarCartasGuardadas()">×</button>
+                        </div>
+                        <div class="cartas-lista" id="cartas-lista">
+                            <!-- Las cartas se generarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup de opciones de casilla -->
+                <div id="popup-opciones-casilla">
+                    <div class="opciones-visual">
+                        <div class="opciones-header">
+                            <div class="opciones-titulo" id="opciones-titulo">OPCIONES DISPONIBLES</div>
+                            <div class="opciones-casilla" id="opciones-casilla-nombre">Nombre de la casilla</div>
+                            <div class="opciones-precio" id="opciones-precio-info">Precio: €0</div>
+                        </div>
+                        <div class="opciones-botones" id="opciones-botones">
+                            <!-- Los botones se generarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup de pago de renta -->
+                <div id="popup-renta">
+                    <div class="renta-visual">
+                        <div class="renta-header">
+                            <div class="renta-titulo">💸 PAGO DE RENTA</div>
+                            <div class="renta-propiedad" id="renta-propiedad-nombre">Nombre de la propiedad</div>
+                            <div class="renta-propietario" id="renta-propietario">Propietario: Jugador</div>
+                        </div>
+                        <div class="renta-info">
+                            <div class="renta-construcciones" id="renta-construcciones-info">Sin construcciones</div>
+                            <div class="renta-cantidad">Debes pagar: €<span id="renta-cantidad">0</span></div>
+                        </div>
+                        <div class="renta-controles">
+                            <button id="pagar-renta-btn" onclick="pagarRentaDirecta()">💰 PAGAR RENTA</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup de seguidores -->
+                <div id="popup-seguidores">
+                    <div class="seguidores-visual">
+                        <div class="seguidores-header">
+                            <div class="seguidores-titulo">📈 TIENDA DE SEGUIDORES</div>
+                            <div class="seguidores-balance" id="seguidores-balance">Seguidores: 0</div>
+                            <button class="cerrar" onclick="cerrarPopupSeguidores()">×</button>
+                        </div>
+                        <div class="seguidores-opciones" id="seguidores-opciones">
+                            <!-- Las opciones se generarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popup de logros -->
+                <div id="popup-logros">
+                    <div class="logros-visual">
+                        <div class="logros-header">
+                            <div class="logros-titulo">🏆 LOGROS LLADOS</div>
+                            <button class="cerrar" onclick="cerrarPopupLogros()">×</button>
+                        </div>
+                        <div class="logros-lista" id="logros-lista">
+                            <!-- Los logros se generarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-der">
+                <div id="player-stats"></div>
+                <div id="game-log"></div>
+                
+                <!-- CHAT DE VOZ -->
+                <div id="voice-chat-container">
+                    <div id="voice-chat-header">
+                        <h3>🎤 Chat de Voz</h3>
+                        <div id="voice-status">Desconectado</div>
+                    </div>
+                    
+                    <div id="voice-controls">
+                        <button id="join-voice-btn" onclick="joinVoiceChat()">🎤 UNIRSE AL CHAT</button>
+                        <button id="leave-voice-btn" onclick="leaveVoiceChat()" style="display: none;">🔇 SALIR DEL CHAT</button>
+                        <button id="mute-btn" onclick="toggleMute()" style="display: none;">🔇 SILENCIAR</button>
+                    </div>
+                    
+                    <div id="voice-participants">
+                        <div class="voice-participant-header">👥 Participantes:</div>
+                        <div id="participants-list">
+                            <div class="no-participants">Nadie conectado</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="mazos-container">
+                    <div class="mazo-carta mazo-mentealfa" onclick="mostrarCartaMazo('mentealfa')">
+                        <div class="icon">🧠</div>
+                        MENTE ALFA
+                    </div>
+                    <div class="mazo-carta mazo-realidad" onclick="mostrarCartaMazo('realidad')">
+                        <div class="icon">⚠️</div>
+                        REALIDAD DEL SISTEMA
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuración de Temática, Motor del Juego y Sistema Multiplayer -->
+    <script src="theme-config.js"></script>
+    <script src="monopollados.js"></script>
+    <script src="multiplayer-firebase.js"></script>
+</body>
+</html>
