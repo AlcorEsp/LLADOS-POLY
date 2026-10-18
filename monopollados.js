@@ -613,6 +613,7 @@ function buyProperty() {
         playSound('good', 'buyProperty');
         
         verificarMonopolio(cellData.zone, player.id);
+        updateCellDisplay(player.position);
         updatePlayerDisplay();
         cerrarOpcionesCasilla();
         finalizarTurnoAutomatico(800);
@@ -830,32 +831,49 @@ function calculateRent(cellData, position) {
 function updateCellDisplay(position) {
     var cell = document.querySelector('[data-index="' + position + '"]');
     var cellData = boardCells[position];
-    
-    if (cell && cellData.constructions > 0) {
-        var existingIndicator = cell.querySelector('.construction-indicator');
+    if (!cell || !cellData) return;
+
+    // Limpiar clases de dueño anteriores
+    cell.classList.remove('property-owned');
+    for (var p = 1; p <= 6; p++) {
+        cell.classList.remove('owner-' + p);
+    }
+
+    var existingIndicator = cell.querySelector('.construction-indicator');
+
+    // Si la casilla tiene dueño, marcar borde del color del jugador y mostrar símbolo/casita
+    if (cellData.owner) {
+        cell.classList.add('property-owned');
+        cell.classList.add('owner-' + cellData.owner);
+
         if (!existingIndicator) {
             existingIndicator = document.createElement('div');
             existingIndicator.className = 'construction-indicator';
             cell.appendChild(existingIndicator);
         }
-        
-        // Obtener el color del jugador propietario
+
         var playerColor = getPlayerColor(cellData.owner);
-        
-        if (cellData.constructions === 4) {
-            existingIndicator.textContent = '🚀';
-            existingIndicator.style.background = playerColor;
-            existingIndicator.style.color = '#fff';
-            existingIndicator.style.border = '2px solid #fff';
-        } else {
-            existingIndicator.textContent = cellData.constructions;
-            existingIndicator.style.background = playerColor;
-            existingIndicator.style.color = '#fff';
-            existingIndicator.style.border = '2px solid #fff';
-        }
-        
-        // Añadir clase para identificar el jugador
+        var ownerPlayer = players && players[cellData.owner - 1];
+        var ownerName = ownerPlayer ? ownerPlayer.name : ('Jugador ' + cellData.owner);
+        var constructions = cellData.constructions || 0;
+
+        existingIndicator.style.background = playerColor;
+        existingIndicator.style.color = '#fff';
+        existingIndicator.style.border = '1.5px solid #fff';
         existingIndicator.className = 'construction-indicator player' + cellData.owner + '-construction';
+
+        if (constructions === 4) {
+            existingIndicator.textContent = '🚀';
+            existingIndicator.title = ownerName + ' · Lanzamiento Final';
+        } else if (constructions > 0) {
+            existingIndicator.textContent = '🏠' + constructions;
+            existingIndicator.title = ownerName + ' · ' + constructions + ' Mentoría(s)';
+        } else {
+            existingIndicator.textContent = cellData.type === 'digital-station' ? '📱' : '🏠';
+            existingIndicator.title = 'Propiedad de ' + ownerName;
+        }
+    } else if (existingIndicator) {
+        existingIndicator.remove();
     }
 }
 
@@ -872,11 +890,12 @@ function getPlayerColor(playerId) {
     return playerColors[playerId] || '#95a5a6'; // Gris por defecto
 }
 
-// Función para actualizar todas las construcciones del tablero
+// Función para actualizar todas las propiedades compradas y construcciones del tablero
 function updateAllConstructions() {
+    if (!Array.isArray(boardCells)) return;
     for (var i = 0; i < boardCells.length; i++) {
         var cellData = boardCells[i];
-        if (cellData.type === 'property' && cellData.constructions > 0 && cellData.owner) {
+        if (cellData && (cellData.type === 'property' || cellData.type === 'digital-station')) {
             updateCellDisplay(i);
         }
     }
@@ -2135,17 +2154,7 @@ function aplicarPerderPropiedad(jugadorId, propiedadId) {
     // Limpiar la propiedad en el tablero
     delete cellData.owner;
     cellData.constructions = 0;
-    
-    var cell = document.querySelector('[data-index="' + propiedadId + '"]');
-    if (cell) {
-        cell.classList.remove('property-owned');
-        // Remover todas las clases de dueño
-        for (var i = 1; i <= 6; i++) {
-            cell.classList.remove('owner-' + i);
-        }
-        var indicator = cell.querySelector('.construction-indicator');
-        if (indicator) indicator.remove();
-    }
+    updateCellDisplay(propiedadId);
     
     addLogEntry('🏠💔 ' + player.name + ' perdió ' + cellData.name);
     updatePlayerDisplay();
@@ -2165,16 +2174,7 @@ function aplicarRobarPropiedad(ladronId, victimaId, propiedadId) {
     // Agregar la propiedad al ladrón
     ladron.properties.push(propiedadId);
     cellData.owner = ladronId;
-    
-    var cell = document.querySelector('[data-index="' + propiedadId + '"]');
-    if (cell) {
-        // Remover clases de dueño anterior
-        for (var i = 1; i <= 6; i++) {
-            cell.classList.remove('owner-' + i);
-        }
-        cell.classList.add('property-owned');
-        cell.classList.add('owner-' + ladronId);
-    }
+    updateCellDisplay(propiedadId);
     
     addLogEntry('🏠🔄 ' + ladron.name + ' robó ' + cellData.name + ' a ' + victima.name);
     updatePlayerDisplay();
@@ -2361,6 +2361,7 @@ function finalizarSubasta() {
         }
         
         addLogEntry('🏆 ' + ganador.name + ' ganó la subasta de ' + cellData.name + ' por €' + pujaActual);
+        updateCellDisplay(propiedadEnSubasta);
         verificarMonopolio(cellData.zone, pujadorActual);
     } else {
         addLogEntry('🚫 Subasta de ' + cellData.name + ' terminó sin ganador');

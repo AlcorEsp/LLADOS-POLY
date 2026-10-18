@@ -691,24 +691,49 @@ h2 {
     filter: grayscale(100%);
 }
 
-/* INDICADOR DE CONSTRUCCIÓN */
+/* INDICADOR DE PROPIEDAD COMPRADA Y CONSTRUCCIONES (CASITA DEL COLOR DEL JUGADOR) */
 .construction-indicator {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 22px;
-    height: 22px;
+    bottom: 18px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 3px;
     background: #f1c40f;
     color: #fff;
-    border-radius: 50%;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8em;
+    font-size: 10px;
+    line-height: 1;
     font-weight: bold;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.45);
+    transition: all 0.2s ease;
+    border: 1.5px solid #fff;
+    z-index: 3;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+@media (max-width: 960px) {
+    .construction-indicator {
+        bottom: 13px;
+        right: 1px;
+        min-width: 13px;
+        height: 13px;
+        padding: 0 2px;
+        font-size: 7.5px;
+        border-width: 1px;
+    }
+    .property-owned.owner-1,
+    .property-owned.owner-2,
+    .property-owned.owner-3,
+    .property-owned.owner-4,
+    .property-owned.owner-5,
+    .property-owned.owner-6 {
+        border-width: 2px !important;
+    }
 }
 
 .construction-indicator:hover {
